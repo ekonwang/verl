@@ -271,8 +271,15 @@ class DataParallelPPOActor(BasePPOActor):
                         data = data.to(torch.cuda.current_device())  # actor device is cpu when using offload
                     responses = data['responses']
                     response_length = responses.size(1)
-                    attention_mask = data['attention_mask']
-                    response_mask = attention_mask[:, -response_length:]
+                    #attention_mask = data['attention_mask']
+                    
+                    # Note:
+                    # In agent setting, the prompt is the initial obs, and reponse is the whole trajectory except initial obs
+                    # The loss mask has the same shape of attention mask, which has both prompt and response, it masks:
+                    # the prompt, the padding of response (right padded), and the obs given by the environment in the reponse
+                    
+                    loss_mask = data['loss_mask']
+                    response_mask = loss_mask[:, -response_length:]
                     old_log_prob = data['old_log_probs']
                     advantages = data['advantages']
 
