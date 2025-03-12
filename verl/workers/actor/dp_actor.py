@@ -229,7 +229,7 @@ class DataParallelPPOActor(BasePPOActor):
 
         temperature = data.meta_info['temperature']  # temperature must be in the data.meta_info to avoid slient error
 
-        select_keys = ['responses', 'input_ids', 'attention_mask', 'position_ids', 'old_log_probs', 'advantages']
+        select_keys = ['responses', 'input_ids', 'attention_mask', 'position_ids', 'old_log_probs', 'advantages','loss_mask']
         if self.config.use_kl_loss:
             select_keys.append('ref_log_prob')
         batch = data.select(batch_keys=select_keys).batch
@@ -278,7 +278,10 @@ class DataParallelPPOActor(BasePPOActor):
                     # The loss mask has the same shape of attention mask, which has both prompt and response, it masks:
                     # the prompt, the padding of response (right padded), and the obs given by the environment in the reponse
                     
-                    loss_mask = data['loss_mask']
+                    if "loss_mask" in data:
+                        loss_mask = data['loss_mask']
+                    else:
+                        loss_mask=data["attention_mask"]
                     response_mask = loss_mask[:, -response_length:]
                     old_log_prob = data['old_log_probs']
                     advantages = data['advantages']

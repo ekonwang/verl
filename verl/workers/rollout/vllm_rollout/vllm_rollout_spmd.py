@@ -97,23 +97,43 @@ class vLLMRollout(BaseRollout):
         assert model_hf_config.max_position_embeddings >= config.prompt_length + config.response_length, \
             "model context length should be greater than total sequence length"
 
-        self.inference_engine = LLM(
-            model=model_path,
-            enable_sleep_mode=True,
-            tensor_parallel_size=tensor_parallel_size,
-            distributed_executor_backend="external_launcher",
-            dtype=config.dtype,
-            enforce_eager=config.enforce_eager,
-            gpu_memory_utilization=config.gpu_memory_utilization,
-            disable_custom_all_reduce=True,
-            skip_tokenizer_init=False,
-            max_model_len=config.prompt_length + config.response_length,
-            disable_log_stats=config.disable_log_stats,
-            max_num_batched_tokens=max_num_batched_tokens,
-            enable_chunked_prefill=config.enable_chunked_prefill,
-            enable_prefix_caching=True,
-            limit_mm_per_prompt={"image":config.limit_mm_per_prompt},
-        )
+        
+        # if model is qwenvl
+        if "Qwen2.5-VL" in model_path:
+            self.inference_engine = LLM(
+                model=model_path,
+                enable_sleep_mode=True,
+                tensor_parallel_size=tensor_parallel_size,
+                distributed_executor_backend="external_launcher",
+                dtype=config.dtype,
+                enforce_eager=config.enforce_eager,
+                gpu_memory_utilization=config.gpu_memory_utilization,
+                disable_custom_all_reduce=True,
+                skip_tokenizer_init=False,
+                max_model_len=config.prompt_length + config.response_length,
+                disable_log_stats=config.disable_log_stats,
+                max_num_batched_tokens=max_num_batched_tokens,
+                enable_chunked_prefill=config.enable_chunked_prefill,
+                enable_prefix_caching=True,
+                limit_mm_per_prompt={"image":config.limit_mm_per_prompt},
+            )
+        else:
+            self.inference_engine = LLM(
+                model=model_path,
+                enable_sleep_mode=True,
+                tensor_parallel_size=tensor_parallel_size,
+                distributed_executor_backend="external_launcher",
+                dtype=config.dtype,
+                enforce_eager=config.enforce_eager,
+                gpu_memory_utilization=config.gpu_memory_utilization,
+                disable_custom_all_reduce=True,
+                skip_tokenizer_init=False,
+                max_model_len=config.prompt_length + config.response_length,
+                disable_log_stats=config.disable_log_stats,
+                max_num_batched_tokens=max_num_batched_tokens,
+                enable_chunked_prefill=config.enable_chunked_prefill,
+                enable_prefix_caching=True,
+            )
 
         # Offload vllm model to reduce peak memory usage
         self.inference_engine.sleep(level=1)
