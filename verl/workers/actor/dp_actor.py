@@ -73,6 +73,15 @@ class DataParallelPPOActor(BasePPOActor):
             batch_size, seqlen = input_ids.shape
             attention_mask = micro_batch['attention_mask']
             position_ids = micro_batch['position_ids']
+            
+            
+            #DEBUG
+            # print(f"[DEBUG] input_ids.shape: {input_ids.shape}")
+            # print(f"[DEBUG] attention_mask.shape: {attention_mask.shape}")
+            # print(f"[DEBUG] position_ids.shape: {position_ids.shape}")
+            # print(f"[DEBUG] batch_size, seqlen: {batch_size} , {seqlen}")
+            
+            
             if position_ids.dim() == 3:  # qwen2vl mrope
                 position_ids = position_ids.transpose(0, 1)  # (bsz, 3, seqlen) -> (3, bsz, seqlen)
 
@@ -104,6 +113,8 @@ class DataParallelPPOActor(BasePPOActor):
                 input_ids_rmpad_rolled = input_ids_rmpad_rolled.squeeze(0)  # ((total_nnz / sp) + pad)
 
                 # only pass input_ids and position_ids to enable flash_attn_varlen
+                # print(f"[DEBUG] input_ids_rmpad.shape: {input_ids_rmpad.shape}")
+                # print(f"[DEBUG] position_ids_rmpad.shape: {position_ids_rmpad.shape}")
                 output = self.actor_module(input_ids=input_ids_rmpad,
                                            attention_mask=None,
                                            position_ids=position_ids_rmpad,
@@ -142,6 +153,9 @@ class DataParallelPPOActor(BasePPOActor):
                 log_probs = full_log_probs.squeeze(-1)[:, -response_length - 1:-1]  # (bsz, response_length)
 
             else:  # not using rmpad and no ulysses sp
+                # print(f"[DEBUG] input_ids.shape: {input_ids.shape}")
+                # print(f"[DEBUG] attention_mask.shape: {attention_mask.shape}")
+                # print(f"[DEBUG] position_ids.shape: {position_ids.shape}")
                 output = self.actor_module(input_ids=input_ids,
                                            attention_mask=attention_mask,
                                            position_ids=position_ids,
