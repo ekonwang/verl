@@ -98,6 +98,7 @@ class vLLMRollout(BaseRollout):
             "model context length should be greater than total sequence length"
 
         
+        print(f"[DEBUG] max_trajectory_length: {config.max_trajectory_length}")
         # if model is qwenvl
         if "Qwen2.5-VL" in model_path:
             self.inference_engine = LLM(
@@ -110,7 +111,8 @@ class vLLMRollout(BaseRollout):
                 gpu_memory_utilization=config.gpu_memory_utilization,
                 disable_custom_all_reduce=True,
                 skip_tokenizer_init=False,
-                max_model_len=config.prompt_length + config.response_length,
+                # max_model_len=config.prompt_length + config.response_length,
+                max_model_len=config.max_trajectory_length,
                 disable_log_stats=config.disable_log_stats,
                 max_num_batched_tokens=max_num_batched_tokens,
                 enable_chunked_prefill=config.enable_chunked_prefill,
@@ -128,7 +130,8 @@ class vLLMRollout(BaseRollout):
                 gpu_memory_utilization=config.gpu_memory_utilization,
                 disable_custom_all_reduce=True,
                 skip_tokenizer_init=False,
-                max_model_len=config.prompt_length + config.response_length,
+                # max_model_len=config.prompt_length + config.response_length,
+                max_model_len=config.max_trajectory_length,
                 disable_log_stats=config.disable_log_stats,
                 max_num_batched_tokens=max_num_batched_tokens,
                 enable_chunked_prefill=config.enable_chunked_prefill,
@@ -209,6 +212,8 @@ class vLLMRollout(BaseRollout):
             } for raw_prompt_ids in non_tensor_batch.pop('raw_prompt_ids')]
 
         do_sample = prompts.meta_info.get('do_sample', True)
+        if 'max_response_per_turn' in self.config:
+            kwargs['max_tokens'] = self.config['max_response_per_turn']
         if not do_sample:
             kwargs = {
                 'best_of': 1,
@@ -234,8 +239,10 @@ class vLLMRollout(BaseRollout):
             for sample_id in range(len(output.outputs)):
                 response.append(output.outputs[sample_id].token_ids)
 
+        for i in range(len(response)):
+            print(f"[DEBUG] response {i} length: {len(response[i])}")
         response = pad_2d_list_to_length(response, self.pad_token_id,
-                                         max_length=self.config.response_length).to(idx.device)
+                                         max_length=self.config.get('max_response_per_turn', self.config.response_length)).to(idx.device)
 
         if self.config.n > 1 and do_sample:
             idx = _repeat_interleave(idx, self.config.n)
