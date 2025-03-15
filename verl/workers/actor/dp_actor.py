@@ -295,6 +295,7 @@ class DataParallelPPOActor(BasePPOActor):
                     if "loss_mask" in data:
                         loss_mask = data['loss_mask']
                     else:
+                        print("DEBUG: warning, loss_mask not found in actor update")
                         loss_mask=data["attention_mask"]
                     response_mask = loss_mask[:, -response_length:]
                     old_log_prob = data['old_log_probs']

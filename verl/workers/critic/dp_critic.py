@@ -168,7 +168,7 @@ class DataParallelPPOCritic(BasePPOCritic):
         self.critic_module.train()
         metrics = {}
 
-        select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns']
+        select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns','loss_mask']
         batch = data.select(batch_keys=select_keys).batch
         has_multi_modal_inputs = 'multi_modal_inputs' in data.non_tensor_batch.keys()
 
@@ -210,8 +210,13 @@ class DataParallelPPOCritic(BasePPOCritic):
                     values = data['values']
                     returns = data['returns']
                     response_length = responses.size(1)
+                    if "loss_mask" in data:
+                        loss_mask = data['loss_mask']
+                    else:
+                        print("DEBUG: warning, loss_mask not found in critic update")
+                        loss_mask=data["attention_mask"]
 
-                    eos_mask = attention_mask[:, -response_length - 1:-1]
+                    eos_mask = loss_mask[:, -response_length - 1:-1] # TODO: check why we need [-response_length - 1:-1] while in actor it's [-response_length:]
 
                     vpreds = self._forward_micro_batch(data)
 

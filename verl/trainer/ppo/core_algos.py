@@ -67,6 +67,72 @@ def get_kl_controller(config):
     return kl_ctrl
 
 
+def compute_gae_advantage_return_with_loss_mask(token_level_rewards: torch.Tensor, values: torch.Tensor, 
+                                 loss_mask: torch.Tensor, gamma: float, lam: float):
+    """Modified GAE calculation that handle multi-turn with loss mask
+    Here we should also ensure that the trajectory score is given at the last valid token instead of last token
+    Seems it's true in reward manager
+    Args:
+        token_level_rewards: `(torch.Tensor)`
+            shape: (bs, response_length)
+        values: `(torch.Tensor)`
+            shape: (bs, response_length)
+        loss_mask: `(torch.Tensor)`
+            shape: (bs, response_length). 1 for llm_raw_response, 0 for environment info and paddings
+        gamma: `(float)`
+            discounted factor used in RL
+        lam: `(float)`
+            lambda value when computing Generalized Advantage Estimation
+
+    Returns:
+        advantages: `(torch.Tensor)`
+            shape: (bs, response_length)
+        Returns: `(torch.Tensor)`
+            shape: (bs, response_length)
+    """
+    with torch.no_grad():
+        batch_size, gen_len = token_level_rewards.shape
+        advantages = torch.zeros_like(token_level_rewards)
+        returns = torch.zeros_like(token_level_rewards)
+        
+        for b in range(batch_size):
+            lastgaelam = 0.0
+            
+            # Find the valid token positions (where loss_mask is 1)
+            valid_positions = loss_mask[b].nonzero(as_tuple=True)[0]
+            
+            if len(valid_positions) == 0:
+                continue
+                
+            for i in range(len(valid_positions) - 1, -1, -1):
+                curr_pos = valid_positions[i]
+                
+                # Get the next value
+                if i < len(valid_positions) - 1:
+                    # Next valid position
+                    next_pos = valid_positions[i + 1]
+                    nextvalue = values[b, next_pos]
+                    
+                else:
+                    # Last valid position
+                    nextvalue = 0.0
+                
+                # Calculate delta using the next valid token
+                delta = token_level_rewards[b, curr_pos] + gamma * nextvalue - values[b, curr_pos]
+                
+                # Update advantage estimate
+                lastgaelam = delta + gamma * lam * lastgaelam
+                advantages[b, curr_pos] = lastgaelam
+            
+            # Calculate returns for valid positions
+            for i, pos in enumerate(valid_positions):
+                returns[b, pos] = advantages[b, pos] + values[b, pos]
+        
+
+        advantages = verl_F.masked_whiten(advantages, loss_mask)
+        
+    return advantages, returns
+
 def compute_gae_advantage_return(token_level_rewards: torch.Tensor, values: torch.Tensor, eos_mask: torch.Tensor,
                                  gamma: torch.Tensor, lam: torch.Tensor):
     """Adapted from https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py
