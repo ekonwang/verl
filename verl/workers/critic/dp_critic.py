@@ -210,13 +210,16 @@ class DataParallelPPOCritic(BasePPOCritic):
                     values = data['values']
                     returns = data['returns']
                     response_length = responses.size(1)
+                    
+                    # Use [:, -response_length:] if we have loss mask, use [:, -response_length - 1:-1] for attention mask as original implementation
+                    # TODO: check why we need [-response_length - 1:-1] while in actor it's [-response_length:]
                     if "loss_mask" in data:
-                        loss_mask = data['loss_mask']
+                        loss_mask = data['loss_mask'][:, -response_length:]
                     else:
                         print("DEBUG: warning, loss_mask not found in critic update")
-                        loss_mask=data["attention_mask"]
+                        loss_mask=data["attention_mask"][:, -response_length - 1:-1]
 
-                    eos_mask = loss_mask[:, -response_length - 1:-1] # TODO: check why we need [-response_length - 1:-1] while in actor it's [-response_length:]
+                    eos_mask = loss_mask 
 
                     vpreds = self._forward_micro_batch(data)
 
