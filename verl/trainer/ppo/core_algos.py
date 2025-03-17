@@ -167,7 +167,7 @@ def compute_multi_turn_gae_advantage_return(token_level_rewards: torch.Tensor, v
         
         for b in range(batch_size):
             # First, calculate high level advantage and return for eos token of each turn using high level gamma
-            eos_positions=token_level_rewards.nonzero(as_tuple=True)[1]
+            eos_positions=token_level_rewards[b].nonzero(as_tuple=True)[0]
             lastgaelam = 0.0
             for i in range(len(eos_positions) - 1, -1, -1):
                 curr_pos = eos_positions[i]
@@ -193,7 +193,7 @@ def compute_multi_turn_gae_advantage_return(token_level_rewards: torch.Tensor, v
                 returns[b, pos] = advantages[b, pos] + values[b, pos]
                 updated_reward[b, pos] = advantages[b, pos] + values[b, pos]
             
-            # Then, calculate low level advantage and return for each token using gamma
+            # Then, calculate low level advantage and return for each token using gamma, assume the reward for the sequence now is the return at eos token
             lastgaelam = 0.0
             valid_positions = loss_mask[b].nonzero(as_tuple=True)[0]
             for i in range(len(valid_positions) - 1, -1, -1):
