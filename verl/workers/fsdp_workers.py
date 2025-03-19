@@ -690,11 +690,19 @@ class CriticWorker(Worker):
             warnings.simplefilter("ignore")
             setattr(critic_model_config, 'classifier_dropout', 0.)
             setattr(critic_model_config, 'hidden_dropout', '0')
-            critic_module = AutoModelForTokenClassification.from_pretrained(pretrained_model_name_or_path=local_path,
+            if "Qwen2.5-VL" in local_path:
+                from verl.models.transformers.modeling_qwen_2_5_vl_patch import Qwen2_5_VLForTokenClassification
+                critic_module = Qwen2_5_VLForTokenClassification.from_pretrained(pretrained_model_name_or_path=local_path,
                                                                             torch_dtype=torch_dtype,
                                                                             config=critic_model_config,
                                                                             attn_implementation='flash_attention_2',
                                                                             trust_remote_code=trust_remote_code)
+            else:
+                critic_module = AutoModelForTokenClassification.from_pretrained(pretrained_model_name_or_path=local_path,
+                                                                                torch_dtype=torch_dtype,
+                                                                                config=critic_model_config,
+                                                                                attn_implementation='flash_attention_2',
+                                                                                trust_remote_code=trust_remote_code)
 
             # some parameters may not in torch_dtype
             critic_module.to(torch_dtype)
