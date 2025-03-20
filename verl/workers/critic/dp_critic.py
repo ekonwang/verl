@@ -168,7 +168,10 @@ class DataParallelPPOCritic(BasePPOCritic):
         self.critic_module.train()
         metrics = {}
 
-        select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns','loss_mask']
+        if 'loss_mask' in data.batch.keys():
+            select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns','loss_mask']
+        else:
+            select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns']
         batch = data.select(batch_keys=select_keys).batch
         has_multi_modal_inputs = 'multi_modal_inputs' in data.non_tensor_batch.keys()
 
