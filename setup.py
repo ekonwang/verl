@@ -38,7 +38,7 @@ install_requires = [
   'tensordict<0.6',
   'torchdata',
   'vllm==0.7.3',
-  "transformers<=4.49.0",
+  "transformers==4.49.0",
   'wandb',
 ]
 
