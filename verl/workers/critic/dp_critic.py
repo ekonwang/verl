@@ -168,7 +168,9 @@ class DataParallelPPOCritic(BasePPOCritic):
         self.critic_module.train()
         metrics = {}
 
-        if 'loss_mask' in data.batch.keys():
+        if self.config.use_reward_mask:
+            select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns','reward_mask']
+        elif 'loss_mask' in data.batch.keys():
             select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns','loss_mask']
         else:
             select_keys = ['input_ids', 'responses', 'attention_mask', 'position_ids', 'values', 'returns']
@@ -217,7 +219,9 @@ class DataParallelPPOCritic(BasePPOCritic):
                     
                     # Use [:, -response_length:] if we have loss mask, use [:, -response_length - 1:-1] for attention mask as original implementation
                     # TODO: check why we need [-response_length - 1:-1] while in actor it's [-response_length:]
-                    if "loss_mask" in data:
+                    if self.config.use_reward_mask:
+                        loss_mask = data['reward_mask'][:, -response_length:]
+                    elif "loss_mask" in data:
                         loss_mask = data['loss_mask'][:, -response_length:]
                     else:
                         print("DEBUG: warning, loss_mask not found in critic update")
