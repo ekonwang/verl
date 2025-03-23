@@ -135,7 +135,7 @@ def compute_gae_advantage_return_with_loss_mask(token_level_rewards: torch.Tenso
 
 def compute_multi_turn_gae_advantage_return(
         token_level_rewards: torch.Tensor,
-        reward_masks: torch.Tensor,
+        reward_mask: torch.Tensor,
         values: torch.Tensor, 
         loss_mask: torch.Tensor,
         gamma: float,
@@ -149,7 +149,7 @@ def compute_multi_turn_gae_advantage_return(
     Args:
         token_level_rewards: `(torch.Tensor)` (multi-turn reward, per turn reward is given at eos token for each response token sequence)
             shape: (bs, response_length)
-        reward_masks: `(torch.Tensor)`
+        reward_mask: `(torch.Tensor)`
             shape: (bs, response_length). 1 for reward position (end of each llm response)
         values: `(torch.Tensor)`
             shape: (bs, response_length)
@@ -176,7 +176,7 @@ def compute_multi_turn_gae_advantage_return(
         
         for b in range(batch_size):
             # First, calculate high level advantage and return for eos token of each turn using high level gamma
-            eos_positions=reward_masks[b].nonzero(as_tuple=True)[0]
+            eos_positions=reward_mask[b].nonzero(as_tuple=True)[0]
             lastgaelam = 0.0
             for i in range(len(eos_positions) - 1, -1, -1):
                 curr_pos = eos_positions[i]
