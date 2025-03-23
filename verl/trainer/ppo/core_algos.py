@@ -133,7 +133,7 @@ def compute_gae_advantage_return_with_loss_mask(token_level_rewards: torch.Tenso
         
     return advantages, returns
 
-def compute_multi_turn_gae_advantage_return(
+def compute_bi_level_gae_advantage_return(
         token_level_rewards: torch.Tensor,
         reward_mask: torch.Tensor,
         values: torch.Tensor, 
