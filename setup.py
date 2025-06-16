@@ -35,9 +35,9 @@ install_requires = [
   'pybind11',
   'pylatexenc',
   'ray>=2.10',
-  'tensordict<0.6',
+  'tensordict==0.6.2',
   'torchdata',
-  'vllm==0.7.3',
+  'vllm==0.8.2',
   "transformers==4.49.0",
   'wandb',
 ]
