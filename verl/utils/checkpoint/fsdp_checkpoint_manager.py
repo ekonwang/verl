@@ -158,26 +158,9 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             print(f'[rank-{self.rank}]: Saving HF ckpt, got full state dict')
 
         if self.rank == 0:
-            # hf_local_path = os.path.join(local_path, 'huggingface')
-            # os.makedirs(hf_local_path, exist_ok=True)
-            # self.model._fsdp_wrapped_module.config.save_pretrained(hf_local_path)
-            # self.processing_class.save_pretrained(hf_local_path)
-
             hf_local_path = os.path.join(local_path, "huggingface")
             os.makedirs(hf_local_path, exist_ok=True)
-
-            # ---------- 收集完整权重并写成 HF ckpt ----------
-            # offload_to_cpu=True 以避免 GPU 内存暴涨
-            # full_cfg = FullStateDictConfig(offload_to_cpu=True)
-
-            # with FSDP.state_dict_type(
-            #     self.model,
-            #     StateDictType.FULL_STATE_DICT,
-            #     full_cfg,      # FULL_STATE_DICT 也需要一个 config
-            # ):
-            #     full_state_dict = self.model.state_dict()
-            #     print(f'[rank-{self.rank}]: Saving HF ckpt, got full state dict')
-
+            
             # 保存为 HuggingFace checkpoint；显式传入 state_dict
             self.model._fsdp_wrapped_module.save_pretrained(
                 hf_local_path,
