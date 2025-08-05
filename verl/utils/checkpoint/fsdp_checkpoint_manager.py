@@ -20,6 +20,7 @@ from typing import Union
 import torch
 import torch.distributed
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType
+from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import ShardedStateDictConfig, ShardedOptimStateDictConfig
 
 from verl.utils.fs import copy_to_local, is_non_local
@@ -75,7 +76,7 @@ class FSDPCheckpointManager(BaseCheckpointManager):
 
         model_state_dict = torch.load(local_model_path)
         optimizer_state_dict = torch.load(local_optim_path)
-        extra_state_dict = torch.load(local_extra_state_path)
+        extra_state_dict = torch.load(local_extra_state_path, weights_only=False)
 
         if del_local_after_load:
             try:
@@ -148,10 +149,44 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         # wait for everyone to dump to local
         torch.distributed.barrier()
 
+        full_cfg = FullStateDictConfig(          # ✅ 正确的 config
+            offload_to_cpu=True,                 # 避免 GPU 内存暴涨
+            rank0_only=True,                     # 只有 rank0 真正拿到完整 dict
+        )
+        with FSDP.state_dict_type(self.model, StateDictType.FULL_STATE_DICT, full_cfg):
+            full_state_dict = self.model.state_dict()  # 每个 rank 都要调用
+            print(f'[rank-{self.rank}]: Saving HF ckpt, got full state dict')
+
         if self.rank == 0:
-            hf_local_path = os.path.join(local_path, 'huggingface')
+            # hf_local_path = os.path.join(local_path, 'huggingface')
+            # os.makedirs(hf_local_path, exist_ok=True)
+            # self.model._fsdp_wrapped_module.config.save_pretrained(hf_local_path)
+            # self.processing_class.save_pretrained(hf_local_path)
+
+            hf_local_path = os.path.join(local_path, "huggingface")
             os.makedirs(hf_local_path, exist_ok=True)
-            self.model._fsdp_wrapped_module.config.save_pretrained(hf_local_path)
+
+            # ---------- 收集完整权重并写成 HF ckpt ----------
+            # offload_to_cpu=True 以避免 GPU 内存暴涨
+            # full_cfg = FullStateDictConfig(offload_to_cpu=True)
+
+            # with FSDP.state_dict_type(
+            #     self.model,
+            #     StateDictType.FULL_STATE_DICT,
+            #     full_cfg,      # FULL_STATE_DICT 也需要一个 config
+            # ):
+            #     full_state_dict = self.model.state_dict()
+            #     print(f'[rank-{self.rank}]: Saving HF ckpt, got full state dict')
+
+            # 保存为 HuggingFace checkpoint；显式传入 state_dict
+            self.model._fsdp_wrapped_module.save_pretrained(
+                hf_local_path,
+                state_dict=full_state_dict,
+                safe_serialization=True,   # 建议用 safetensors，若不需要可删掉
+            )
+            print(f'[rank-{self.rank}]: Saved HF ckpt, got safetensors')
+
+            # ---------- 继续保存 tokenizer / processor ----------
             self.processing_class.save_pretrained(hf_local_path)
 
         torch.distributed.barrier()
